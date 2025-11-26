@@ -262,8 +262,24 @@ class CandidateFetcher:
             "max_results": 100,
         }
         logger.info("Fetching arXiv entries for categories: %s", ", ".join(categories))
-        resp = self.session.get(url, params=params, timeout=30)
-        resp.raise_for_status()
+        
+        try:
+            # 可以适当把超时时间调大一些，如 60 秒
+            resp = self.session.get(url, params=params, timeout=60)
+            resp.raise_for_status()
+        except requests.exceptions.ReadTimeout as exc:
+            logger.warning(
+                "Timeout when fetching arXiv entries (%s); skipping arXiv for this run.",
+                exc,
+            )
+            return []
+        except RequestException as exc:
+            logger.warning(
+                "Failed to fetch arXiv entries: %s; skipping arXiv for this run.",
+                exc,
+            )
+            return []
+
         feed = feedparser.parse(resp.text)
         results = []
         for entry in feed.entries:
